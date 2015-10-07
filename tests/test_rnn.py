@@ -94,7 +94,7 @@ def test_forward(xs):
     rnn = Rnn(3, 2, [4, 3], lstm=True)
     state = rnn.create_init_state(2)
     last_state, ys = rnn.forward(state, xs)
-    assert len(ys) == 4
+    assert len(ys) == 5
     assert ys[0].data.shape == (2, 2)   # batch=2, dim=2
     assert last_state['h1'].data.shape == (2, 4)
     assert last_state['h2'].data.shape == (2, 3)
