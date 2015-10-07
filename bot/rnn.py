@@ -58,7 +58,6 @@ class Rnn(object):
             setattr(model, 'l_y', F.Linear(layer_dims[-1], vocab_size))
         self.model = model
 
-
     def step(self, state, x):
         h = self.model.emb(x)
         new_state = {}
@@ -82,6 +81,26 @@ class Rnn(object):
             y = self.model.l_y(h)
             return new_state, y
 
+    def create_init_state(self, batch_size, train=True, gpu=None):
+        """Create initial state (hidden layers) filled with zeros."""
+        volatile = not train
+        state = {}
+        with util.get_device(gpu):
+            if gpu is None:
+                xp = np
+            else:
+                xp = cuda.cupy
+
+            for layer_num, l in enumerate(self.layers, 1):
+                h_data = xp.zeros((batch_size, l), dtype=np.float32)
+                h = chainer.Variable(h_data, volatile=volatile)
+                state['h' + str(layer_num)] = h
+                if self.lstm:
+                    c_data = xp.zeros((batch_size, l), dtype=np.float32)
+                    c = chainer.Variable(c_data, volatile=volatile)
+                    state['c' + str(layer_num)] = c
+        return state
+
     def forward(self, state, xs):
         """Forward computation.
 
@@ -103,22 +122,44 @@ class Rnn(object):
         else:
             return state, ys
 
-    def create_init_state(self, batch_size, train=True, gpu=None):
-        """Create initial state (hidden layers) filled with zeros."""
-        volatile = not train
-        state = {}
-        with util.get_device(gpu):
-            if gpu is None:
-                xp = np
-            else:
-                xp = cuda.cupy
+    def generate(self, state, max_len=50, eos_id=0, exp=3):
+        """Generate sequence.
+        Batch size must be 1, because all samples in batch must have the same length .
 
-            for layer_num, l in enumerate(self.layers, 1):
-                h_data = xp.zeros((batch_size, l), dtype=np.float32)
-                h = chainer.Variable(h_data, volatile=volatile)
-                state['h' + str(layer_num)] = h
-                if self.lstm:
-                    c_data = xp.zeros((batch_size, l), dtype=np.float32)
-                    c = chainer.Variable(c_data, volatile=volatile)
-                    state['c' + str(layer_num)] = c
-        return state
+        :param state: initial state
+        :type state: dict of (string, chainer.Variable)
+        :param int max_len: maximum length of output
+        :param int eos_id: generation stops when this ID is chosen
+        :param int exp: exponentiate output distribution by this number
+        :rtype: list of chainer.Variable
+        """
+        assert not self.suppress_output
+
+        def _id2var(w_id):
+            return chainer.Variable(np.asarray([w_id], dtype=np.int32), volatile=True)
+
+        # assert that batch size is 1
+        for s in state.values():
+            assert s.data.shape[0] == 1
+
+        ids = []     # generated sequence
+        x = _id2var(eos_id)
+        for i in range(max_len):
+            state, y = self.step(state, x)
+
+            # calculate output distribution
+            # probabilities are adjusted by exponentiating them by ``exp``
+            probs = F.softmax(y * exp).data[0]
+
+            # sample from distribution
+            next_id = np.random.choice(probs.size, p=probs)
+            ids.append(next_id)
+
+            if next_id == eos_id:
+                # terminate generateion
+                break
+            else:
+                # create next input
+                x = _id2var(next_id)
+
+        return ids
