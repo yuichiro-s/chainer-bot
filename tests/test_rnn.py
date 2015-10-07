@@ -94,7 +94,7 @@ def test_forward(xs):
     rnn = Rnn(3, 2, [4, 3], lstm=True)
     state = rnn.create_init_state(2)
     last_state, ys = rnn.forward(state, xs)
-    assert len(ys) == 4
+    assert len(ys) == 5
     assert ys[0].data.shape == (2, 2)   # batch=2, dim=2
     assert last_state['h1'].data.shape == (2, 4)
     assert last_state['h2'].data.shape == (2, 3)
@@ -104,7 +104,6 @@ def test_forward(xs):
 
 def test_generate():
     rnn = Rnn(3, 2, [4, 3], lstm=True)
-    x = chainer.Variable(np.zeros(1, dtype=np.int32), volatile=True)
     state = rnn.create_init_state(1, train=False)
-    ids = rnn.generate(state, x)
+    ids = rnn.generate(state)
     assert len(ids) == 50 or ids[-1] == 0

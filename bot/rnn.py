@@ -9,7 +9,7 @@ import numpy as np
 class Rnn(object):
     """Recurrent Neural Network"""
 
-    def __init__(self, emb_dim, vocab_size, layers, suppress_output=False, lstm=False, irnn=False, active=F.relu):
+    def __init__(self, emb_dim, vocab_size, layers, suppress_output=False, lstm=False, irnn=False, active=F.relu, eos_id=0):
         """
         Recurrent Neural Network with multiple layers.
         in_dim -> layers[0] -> ... -> layers[-1] -> out_dim (optional)
@@ -22,6 +22,7 @@ class Rnn(object):
         :param bool lstm: whether to use LSTM
         :param bool irnn: whether to use IRNN
         :param chainer.Function active: activation function between layers of vanilla RNN
+        :param int eos_id: ID of <BOS> and <EOS>
         """
         assert not (lstm and irnn)
 
@@ -32,6 +33,7 @@ class Rnn(object):
         self.lstm = lstm
         self.irnn = irnn
         self.active = active
+        self.eos_id = eos_id
 
         # set up NN architecture
         model = chainer.FunctionSet(
@@ -101,16 +103,19 @@ class Rnn(object):
                     state['c' + str(layer_num)] = c
         return state
 
-    def forward(self, state, xs):
+    def forward(self, state, xs, train=True):
         """Forward computation.
 
         :param state: initial state
         :type state: dict of (string, chainer.Variable)
-        :param xs: list of input
+        :param xs: list of input (EOS is prepended automatically)
         :type xs: list of chainer.Variable
+        :return: final state (and unnormalized probabilities)
         """
+        batch_size = xs[0].data.shape[0]
+        x0 = util.id2var(self.eos_id, batch_size, train)
         ys = []
-        for x in xs:
+        for x in [x0] + xs:
             step_out = self.step(state, x)
             if self.suppress_output:
                 state = step_out
@@ -122,49 +127,46 @@ class Rnn(object):
         else:
             return state, ys
 
-    def generate(self, state, x0, max_len=50, eos_id=0, exp=3):
+    def generate(self, state, max_len=50, exp=3):
         """Generate sequence.
         Batch size must be 1, because all samples in batch must have the same length .
 
         :param state: initial state
         :type state: dict of (string, chainer.Variable)
-        :param chainer.Variable x0: initial input
         :param int max_len: maximum length of output
-        :param int eos_id: generation stops when this ID is chosen
         :param int exp: exponentiate output distribution by this number
         :rtype: list of chainer.Variable
         """
         assert not self.suppress_output
 
         # assert that batch size is 1
-        assert x0.data.shape[0] == 1
         for s in state.values():
             assert s.data.shape[0] == 1
 
         ids = []     # generated sequence
-        x = x0
+        x = util.id2var(self.eos_id, train=False)
         for i in range(max_len):
             state, y = self.step(state, x)
 
             # calculate output distribution
-            probs = F.softmax(y).data[0]
-
-            # adjust distribution
-            probs = np.power(probs, exp)
-            # cast to float64, otherwise probs doesn't sum to 1 after renormalization
-            probs = probs.astype(np.float64)
-            # renormalize
-            probs /= np.sum(probs)
+            # cast to float64, otherwise probabilities don't sum to 1
+            y_data = y.data[0].astype(np.float64)
+            # probabilities are adjusted by exponentiating them by ``exp``
+            y_data *= exp
+            # softmax
+            y_data -= np.max(y_data)
+            y_data = np.exp(y_data)
+            probs = y_data / np.sum(y_data)
 
             # sample from distribution
             next_id = np.random.choice(probs.size, p=probs)
             ids.append(next_id)
 
-            if next_id == eos_id:
+            if next_id == self.eos_id:
                 # terminate generateion
                 break
             else:
                 # create next input
-                x = chainer.Variable(np.asarray([next_id], dtype=np.int32), volatile=True)
+                x = util.id2var(next_id, train=False)
 
         return ids
