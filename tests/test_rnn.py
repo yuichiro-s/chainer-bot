@@ -100,3 +100,11 @@ def test_forward(xs):
     assert last_state['h2'].data.shape == (2, 3)
     assert last_state['c1'].data.shape == (2, 4)
     assert last_state['c2'].data.shape == (2, 3)
+
+
+def test_generate():
+    rnn = Rnn(3, 2, [4, 3], lstm=True)
+    x = chainer.Variable(np.zeros(1, dtype=np.int32), volatile=True)
+    state = rnn.create_init_state(1, train=False)
+    ids = rnn.generate(state, x)
+    assert len(ids) == 50 or ids[-1] == 0
