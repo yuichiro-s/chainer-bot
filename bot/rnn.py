@@ -6,10 +6,6 @@ from chainer import cuda
 import numpy as np
 
 
-def _id2var(w_id, batch_size=1, train=True):
-    return chainer.Variable(np.asarray([w_id], dtype=np.int32).repeat(batch_size), volatile=not train)
-
-
 class Rnn(object):
     """Recurrent Neural Network"""
 
@@ -112,12 +108,12 @@ class Rnn(object):
 
         :param state: initial state
         :type state: dict of (string, chainer.Variable)
-        :param xs: list of input
+        :param xs: list of input (EOS is prepended automatically)
         :type xs: list of chainer.Variable
         :return: final state (and unnormalized probabilities)
         """
         batch_size = xs[0].data.shape[0]
-        x0 = _id2var(self.eos_id, batch_size, train)
+        x0 = util.id2var(self.eos_id, batch_size, train)
         ys = []
         for x in [x0] + xs:
             step_out = self.step(state, x)
@@ -148,7 +144,7 @@ class Rnn(object):
             assert s.data.shape[0] == 1
 
         ids = []     # generated sequence
-        x = _id2var(self.eos_id, train=False)
+        x = util.id2var(self.eos_id, train=False)
         for i in range(max_len):
             state, y = self.step(state, x)
 
@@ -171,6 +167,6 @@ class Rnn(object):
                 break
             else:
                 # create next input
-                x = _id2var(next_id, train=False)
+                x = util.id2var(next_id, train=False)
 
         return ids
