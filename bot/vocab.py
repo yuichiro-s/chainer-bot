@@ -15,9 +15,10 @@ class Vocab(object):
     def add_word(self, word):
         if not isinstance(word, unicode):
             raise TypeError
-        new_id = self.size()
-        self.w2i[word] = new_id
-        self.i2w.append(word)
+        if word not in self.w2i:
+            new_id = self.size()
+            self.w2i[word] = new_id
+            self.i2w.append(word)
 
     def get_id(self, word):
         """Convert word to ID.

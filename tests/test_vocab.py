@@ -21,6 +21,16 @@ def test_add_word():
     assert voc.size() == 4
 
 
+def test_duplicate_word():
+    voc = Vocab()
+    voc.add_word(u'a')
+    voc.add_word(u'b')
+    voc.add_word(u'c')
+    voc.add_word(u'b')
+    voc.add_word(u'a')
+    assert voc.size() == 5
+
+
 def test_raise_type_error_for_non_unicode():
     voc = Vocab()
     with pytest.raises(TypeError):
