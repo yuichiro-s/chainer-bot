@@ -33,3 +33,13 @@ class Vocab(object):
 
     def size(self):
         return len(self.i2w)
+
+    def save(self, path):
+        with open(path, 'w') as f:
+            raise NotImplementedError
+
+    @classmethod
+    def load(cls, path):
+        with open(path) as f:
+            raise NotImplementedError
+

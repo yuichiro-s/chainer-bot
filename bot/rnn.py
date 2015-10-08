@@ -135,7 +135,7 @@ class Rnn(object):
         :type state: dict of (string, chainer.Variable)
         :param int max_len: maximum length of output
         :param int exp: exponentiate output distribution by this number
-        :rtype: list of chainer.Variable
+        :rtype: list of int
         """
         assert not self.suppress_output
 
