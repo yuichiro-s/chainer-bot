@@ -1,5 +1,6 @@
 import chainer
 from chainer import cuda
+import chainer.optimizers as O
 import numpy as np
 
 import os
@@ -29,6 +30,7 @@ class Model(object):
     def load(self, path):
         raise NotImplementedError
 
+
 def id2var(w_id, batch_size=1, train=True):
     return chainer.Variable(np.asarray([w_id], dtype=np.int32).repeat(batch_size), volatile=not train)
 
@@ -37,7 +39,15 @@ def get_device(gpu):
     return cuda.DummyDevice if gpu is None else cuda.Device(gpu)
 
 
-def status_str(status):
+def list2optimizer(lst):
+    """Create chainer optimizer object from list of strings, such as ['SGD', '0.01']"""
+    optim_name = lst[0]
+    optim_args = map(float, lst[1:])
+    optimizer = getattr(O, optim_name)(*optim_args)
+    return optimizer
+
+
+def _status_str(status):
     lst = []
     for k, v in status.items():
         lst.append(k + ':')
@@ -106,7 +116,7 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
             status['x2'] = x_data.shape[1]
             status['t1'] = t_data.shape[0]
             status['t2'] = t_data.shape[1]
-            logger.info(status_str(status))
+            logger.info(_status_str(status))
 
         # save model
         if (epoch - 1) % save_every == 0 or epoch == max_epoch:

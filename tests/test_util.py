@@ -14,8 +14,6 @@ def setup_function(function):
 
 def test_train(tmpdir):
     """Test seq2seq can learn to reverse input"""
-    np.random.seed(0)
-
     encoder = rnn.Rnn(emb_dim=100, vocab_size=5, layers=[100], suppress_output=True, lstm=True)
     decoder = rnn.Rnn(emb_dim=100, vocab_size=5, layers=[100], suppress_output=False, lstm=True)
     s2s = seq2seq.Seq2Seq(encoder, decoder)
@@ -38,6 +36,7 @@ def test_train(tmpdir):
     assert not os.path.exists(os.path.join(dest_dir, 'epoch4'))
     assert os.path.exists(os.path.join(dest_dir, 'epoch5'))
     assert os.path.exists(os.path.join(dest_dir, 'epoch6'))
+    assert not os.path.exists(os.path.join(dest_dir, 'epoch7'))
 
     # measure test accuracy
     test_loss, test_avg = s2s.forward_batch(test_xs_data, test_ts_data, train=False)
