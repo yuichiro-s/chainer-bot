@@ -2,6 +2,7 @@
 
 from bot import util
 from bot import vocab
+from bot import gen
 from bot import seq2seq
 
 import sys
@@ -18,32 +19,21 @@ def main(args):
     voc = vocab.Vocab.load(vocab_path)
 
     while True:
-        # get input
-        user_input = raw_input('> ').decode('utf-8')
+        try:
+            # get input
+            user_input = raw_input('> ').decode('utf-8')
 
-        # separate into words
-        # currently all characters are treated as one word
-        input_words = user_input
+            # separate into words
+            # currently all characters are treated as one word
+            input_words = user_input
 
-        # convert to IDs
-        xs = []
-        for w in input_words:
-            w_id = voc.get_id(w)
-            x = util.id2var(w_id, train=False)
-            xs.append(x)
+            sen = gen.generate(input_words, s2s, voc,
+                               max_len=args.max_len, exp=args.exp)
 
-        # generate ID sequence
-        w_ids = s2s.generate(xs, max_len=args.max_len, exp=args.exp)
+            print sen
 
-        # convert to words
-        ws = []
-        for w_id in w_ids:
-            w = voc.get_word(w_id)
-            ws.append(w)
-
-        # print words
-        sen = u''.join(ws)
-        print sen
+        except Exception as e:
+            print >> sys.stderr, 'Error: ' + str(e)
 
 
 if __name__ == '__main__':
