@@ -16,15 +16,27 @@ def load_corpus(path):
     return corpus
 
 
-def create_batches(corpus, batch_size, shuffle=True):
+def create_batches(corpus, batch_size, shuffle=True, max_vocab_size=None, unk_id=1):
     """
     Turn batches into corpus by grouping samples of similar lengths.
 
     :param corpus: list of pairs of input sequence and output sequence
     :param batch_size: batch size
     :param shuffle: whether to shuffle batches
+    :param max_vocab_size: max vocabulary size
+    :param unk_id: ID of <UNK>
     :return: list of batches
     """
+
+    # map out-of-vocabulary words to UNK
+    for xs, ts in corpus:
+        for i in range(len(xs)):
+            if xs[i] >= max_vocab_size:
+                xs[i] = unk_id
+        for i in range(len(ts)):
+            if ts[i] >= max_vocab_size:
+                ts[i] = unk_id
+
     sorted_corpus = sorted(corpus, key=lambda (xs, ts): (len(xs), len(ts)))
 
     xss = []
@@ -34,14 +46,14 @@ def create_batches(corpus, batch_size, shuffle=True):
 
     def _mk_batch(xss, tss, x_len, t_len):
         # batch is full
-        x_arr = np.empty((batch_size, x_len), dtype=np.int32)
-        t_arr = np.empty((batch_size, t_len), dtype=np.int32)
+        x_arr = np.empty((x_len, batch_size), dtype=np.int32)
+        t_arr = np.empty((t_len, batch_size), dtype=np.int32)
         x_arr.fill(-1)
         t_arr.fill(-1)
         for i, xs_ in enumerate(xss):
-            x_arr[i, :len(xs_)] = xs_
+            x_arr[:len(xs_), i] = xs_
         for i, ts_ in enumerate(tss):
-            t_arr[i, :len(ts_)] = ts_
+            t_arr[:len(ts_), i] = ts_
         return x_arr, t_arr
 
     batches = []

@@ -4,8 +4,10 @@ from bot import util
 from bot import corpus
 from bot import seq2seq
 from bot import rnn
+from bot import vocab
 
 import sys
+import os
 
 
 def _get_status(batch):
@@ -20,16 +22,27 @@ def _get_status(batch):
 
 
 def main(args):
-    vocab_size = None
+    # determine vocabulary size
+    if os.path.exists(args.vocab):
+        print >> sys.stderr, 'Loading vocabulary from {}'.format(args.vocab)
+        voc = vocab.Vocab.load(args.vocab)
+        vocab_size = voc.size()
+    else:
+        vocab_size = int(args.vocab_size)
+    print >> sys.stderr, 'Vocabulary size: {}'.format(vocab_size)
 
     # create sequence-to-sequence model
     encoder = rnn.Rnn(emb_dim=args.emb, vocab_size=vocab_size, layers=args.hidden, suppress_output=True, lstm=args.lstm)
     decoder = rnn.Rnn(emb_dim=args.emb, vocab_size=vocab_size, layers=args.hidden, suppress_output=False, lstm=args.lstm)
     s2s = seq2seq.Seq2Seq(encoder, decoder)
 
+    # load corpus
+    print >> sys.stderr, 'Loading training data from {}'.format(args.data)
+    c = corpus.load_corpus(args.data)
+
     # create batches
     print >> sys.stderr, 'Creating batches...'
-    batches = corpus.create_batches(corpus, batch_size=args.batch, shuffle=not args.no_shuffle)
+    batches = corpus.create_batches(c, batch_size=args.batch, shuffle=not args.no_shuffle, max_vocab_size=vocab_size)
 
     # train
     print >> sys.stderr, 'Training started.'
@@ -43,13 +56,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train sequence-to-sequence model.')
 
     parser.add_argument('data', help='path to training data')
-    parser.add_argument('vocab', help='vocabulary file')
+    parser.add_argument('vocab', help='vocabulary size or path to vocabulary file')
     parser.add_argument('model', help='destination of model')
 
     # NN architecture
     parser.add_argument('--emb', type=int, default=100, help='dimension of embeddings')
     parser.add_argument('--hidden', nargs='+', type=int, default=[300, 300], help='dimensions of hidden layers')
-    parser.add_argument('--vocab', type=int, default=10000, help='max vocabulary size (dimension of softmax layer)')
     parser.add_argument('--lstm', action='store_true', default=False, help='use LSTM activations')
 
     # training options

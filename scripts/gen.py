@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 from bot import util
-from bot import corpus
 from bot import vocab
 from bot import seq2seq
-from bot import rnn
 
 import sys
 import os
