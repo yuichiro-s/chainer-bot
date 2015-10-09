@@ -8,6 +8,17 @@ from bot import rnn
 import sys
 
 
+def _get_status(batch):
+    status = []
+    x_data, t_data = batch
+    src_length, batch_size = x_data.shape
+    trg_length = t_data.shape[0]
+    status.append(('src', src_length))
+    status.append(('trg', trg_length))
+    status.append(('batch', batch_size))
+    return status
+
+
 def main(args):
     vocab_size = None
 
@@ -23,7 +34,7 @@ def main(args):
     # train
     print >> sys.stderr, 'Training started.'
     optimizer = util.list2optimizer(args.optim)
-    util.train(s2s, batches, optimizer, args.model, max_epoch=None, gpu=args.gpu, save_every=args.save_every)
+    util.train(s2s, batches, optimizer, args.model, max_epoch=None, gpu=args.gpu, save_every=args.save_every, get_status=_get_status)
 
 
 if __name__ == '__main__':

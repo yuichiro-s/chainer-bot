@@ -26,9 +26,20 @@ def test_train(tmpdir):
     train_batches = map(lambda _: _create_batch(), range(20))
     test_xs_data, test_ts_data = _create_batch()
 
-    dest_dir = str(tmpdir.mkdir('model'))
-    util.train(s2s, train_batches, O.Adam(), dest_dir, max_epoch=6, log=True, save_every=2)
+    def _get_status(batch):
+        status = []
+        x_data, t_data = batch
+        src_length, batch_size = x_data.shape
+        trg_length = t_data.shape[0]
+        status.append(('src_len', src_length))
+        status.append(('trg_len', trg_length))
+        status.append(('batch', batch_size))
+        return status
 
+    dest_dir = str(tmpdir.mkdir('model'))
+    util.train(s2s, train_batches, O.Adam(), dest_dir, max_epoch=6, log=True, save_every=2, get_status=_get_status)
+
+    # check output model
     assert os.path.exists(os.path.join(dest_dir, 'log'))
     assert os.path.exists(os.path.join(dest_dir, 'epoch1'))
     assert not os.path.exists(os.path.join(dest_dir, 'epoch2'))
@@ -37,6 +48,14 @@ def test_train(tmpdir):
     assert os.path.exists(os.path.join(dest_dir, 'epoch5'))
     assert os.path.exists(os.path.join(dest_dir, 'epoch6'))
     assert not os.path.exists(os.path.join(dest_dir, 'epoch7'))
+
+    # check log
+    log_line = None
+    with open(os.path.join(dest_dir, 'log')) as f:
+        log_line = f.readline()
+    assert 'src_len' in log_line
+    assert 'trg_len' in log_line
+    assert 'batch' in log_line
 
     # measure test accuracy
     test_loss, test_avg = s2s.forward_batch(test_xs_data, test_ts_data, train=False)

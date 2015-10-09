@@ -6,7 +6,6 @@ import numpy as np
 import os
 import logging
 import time
-from collections import OrderedDict
 
 
 class Model(object):
@@ -49,13 +48,13 @@ def list2optimizer(lst):
 
 def _status_str(status):
     lst = []
-    for k, v in status.items():
+    for k, v in status:
         lst.append(k + ':')
         lst.append(str(v))
     return '\t'.join(lst)
 
 
-def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=True, save_every=1):
+def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=True, save_every=1, get_status=None):
     """Common training procedure.
 
     :param Model model: model to train
@@ -66,6 +65,7 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
     :param gpu: ID of GPU (None to use CPU)
     :param log: whether to enable logging
     :param save_every: save every this number of epochs (first epoch and last epoch are always saved)
+    :param get_status: function that takes batch and returns list of tuples of (name, value)
     """
     # create model directory
     if not os.path.exists(dest_dir):
@@ -94,7 +94,9 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
             break
 
         # train batches
-        for i, (x_data, t_data) in enumerate(batches):
+        for i, batch in enumerate(batches):
+            x_data, t_data = batch
+
             time_start = time.time()
 
             optimizer.zero_grads()
@@ -106,16 +108,15 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
             time_delta = time_end - time_start
 
             # report training status
-            status = OrderedDict()
-            status['epoch'] = epoch
-            status['batch'] = i + 1
-            status['loss'] = loss.data      # training loss
-            status['acc'] = '{:.2%}'.format(acc)    # training accuracy
-            status['time'] = int(time_delta * 1000)     # time in msec
-            status['x1'] = x_data.shape[0]
-            status['x2'] = x_data.shape[1]
-            status['t1'] = t_data.shape[0]
-            status['t2'] = t_data.shape[1]
+            status = []
+            status.append(('epoch', epoch))
+            status.append(('batch', i + 1))
+            status.append(('loss', loss.data))      # training loss
+            status.append(('acc', '{:.2%}'.format(acc)))    # training accuracy
+            status.append(('time', int(time_delta * 1000)))     # time in msec
+            if get_status is not None:
+                status_lst = get_status(batch)
+                status.extend(status_lst)
             logger.info(_status_str(status))
 
         # save model
