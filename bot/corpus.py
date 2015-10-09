@@ -16,7 +16,7 @@ def load_corpus(path):
     return corpus
 
 
-def create_batches(corpus, batch_size, shuffle=True, max_vocab_size=None, unk_id=1):
+def create_batches(corpus, batch_size, shuffle=True, max_vocab_size=None, unk_id=1, eos_id=0):
     """
     Turn batches into corpus by grouping samples of similar lengths.
 
@@ -25,6 +25,7 @@ def create_batches(corpus, batch_size, shuffle=True, max_vocab_size=None, unk_id
     :param shuffle: whether to shuffle batches
     :param max_vocab_size: max vocabulary size
     :param unk_id: ID of <UNK>
+    :param eos_id: ID of <EOS> (used as padding to make implementation simple)
     :return: list of batches
     """
 
@@ -48,10 +49,10 @@ def create_batches(corpus, batch_size, shuffle=True, max_vocab_size=None, unk_id
         # batch is full
         x_arr = np.empty((x_len, batch_size), dtype=np.int32)
         t_arr = np.empty((t_len, batch_size), dtype=np.int32)
-        x_arr.fill(-1)
-        t_arr.fill(-1)
+        x_arr.fill(eos_id)
+        t_arr.fill(eos_id)
         for i, xs_ in enumerate(xss):
-            x_arr[:len(xs_), i] = xs_
+            x_arr[x_len-len(xs_):, i] = xs_
         for i, ts_ in enumerate(tss):
             t_arr[:len(ts_), i] = ts_
         return x_arr, t_arr

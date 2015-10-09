@@ -55,6 +55,8 @@ class Seq2Seq(util.Model):
         for x_data in xs_data:
             x = chainer.Variable(x_data, volatile=volatile)
             xs.append(x)
+        eos_x = util.id2var(self.decoder.eos_id, batch_size, train=train)
+        xs.append(eos_x)  # at least one <EOS> must come at the end
 
         ts = []
         for t_data in ts_data:
@@ -64,8 +66,8 @@ class Seq2Seq(util.Model):
         ys = self.forward(xs, ts, train=train)
         assert len(ys) == len(ts) + 1
 
-        eos = util.id2var(self.decoder.eos_id, batch_size, train=train)
-        ts.append(eos)  # must predict EOS at the end
+        eos_t = util.id2var(self.decoder.eos_id, batch_size, train=train)
+        ts.append(eos_t)  # must predict EOS at the end
 
         loss = 0
         accs = []
