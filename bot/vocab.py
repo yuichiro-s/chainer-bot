@@ -36,10 +36,23 @@ class Vocab(object):
 
     def save(self, path):
         with open(path, 'w') as f:
-            raise NotImplementedError
+            for i, w in enumerate(self.i2w):
+                print >> f, '{}\t{}'.format(i, w.encode('utf-8'))
 
     @classmethod
     def load(cls, path):
+        voc = Vocab()   # <EOS> and <UNK> are added at this point
         with open(path) as f:
-            raise NotImplementedError
-
+            for line in f:
+                es = line.split('\t')
+                if len(es) == 2:
+                    i, w = es
+                    w = w.decode('utf-8')
+                    if i == 0:
+                        assert w == EOS
+                    elif i == 1:
+                        assert w == UNK
+                    else:
+                        # add word
+                        voc.add_word(w)
+        return voc
