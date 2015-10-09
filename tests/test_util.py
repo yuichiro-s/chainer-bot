@@ -26,7 +26,7 @@ def test_train(tmpdir):
     train_batches = map(lambda _: _create_batch(), range(20))
     test_xs_data, test_ts_data = _create_batch()
 
-    def _get_status(batch):
+    def _get_status(batch, loss, acc):
         status = []
         x_data, t_data = batch
         src_length, batch_size = x_data.shape

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import chainer
 from chainer import cuda
 import chainer.optimizers as O
@@ -10,7 +11,7 @@ import time
 
 class Model(object):
 
-    def forward_batch(self, x_data, t_data, train):
+    def forward_batch(self, x_data, t_data, train, gpu):
         """Forward computation for one batch.
 
         :param xs_data: input
@@ -30,8 +31,11 @@ class Model(object):
         raise NotImplementedError
 
 
-def id2var(w_id, batch_size=1, train=True):
-    return chainer.Variable(np.asarray([w_id], dtype=np.int32).repeat(batch_size), volatile=not train)
+def id2var(w_id, batch_size=1, train=True, gpu=None):
+    arr = np.asarray([w_id], dtype=np.int32).repeat(batch_size)
+    if gpu is not None:
+        arr = cuda.to_gpu(arr, gpu)
+    return chainer.Variable(arr, volatile=not train)
 
 
 def get_device(gpu):
@@ -48,7 +52,7 @@ def list2optimizer(lst):
 
 def _status_str(status):
     lst = []
-    for k, v in status:
+    for k, v in status.items():
         lst.append(k + ':')
         lst.append(str(v))
     return '\t'.join(lst)
@@ -83,6 +87,12 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
         file_handler.setFormatter(fmt)
         logger.addHandler(file_handler)     # write to file
 
+    n_batches = len(batches)
+
+    if gpu is not None:
+        # set up GPU
+        model.model.to_gpu(gpu)
+
     # set up optimizer
     optimizer.setup(model.model)
 
@@ -97,10 +107,15 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
         for i, batch in enumerate(batches):
             x_data, t_data = batch
 
+            # copy data to GPU
+            if gpu is not None:
+                x_data = cuda.to_gpu(x_data, device=gpu)
+                t_data = cuda.to_gpu(t_data, device=gpu)
+
             time_start = time.time()
 
             optimizer.zero_grads()
-            loss, acc = model.forward_batch(x_data, t_data, train=True)
+            loss, acc = model.forward_batch(x_data, t_data, train=True, gpu=gpu)
             loss.backward()
             optimizer.update()
 
@@ -108,15 +123,18 @@ def train(model, batches, optimizer, dest_dir, max_epoch=None, gpu=None, log=Tru
             time_delta = time_end - time_start
 
             # report training status
-            status = []
-            status.append(('epoch', epoch))
-            status.append(('batch', i + 1))
-            status.append(('loss', loss.data))      # training loss
-            status.append(('acc', '{:.2%}'.format(acc)))    # training accuracy
-            status.append(('time', int(time_delta * 1000)))     # time in msec
+            status = OrderedDict()
+            status['epoch'] = epoch
+            status['batch'] = i + 1
+            status['prog'] = '{:.1%}'.format(float(i+1) / n_batches)
+            status['time'] = int(time_delta * 1000)     # time in msec
+
+            status['loss'] = loss.data      # training loss
+            status['acc'] = '{:.2%}'.format(acc)    # training accuracy
             if get_status is not None:
-                status_lst = get_status(batch)
-                status.extend(status_lst)
+                status_lst = get_status(batch, float(loss.data), acc)
+                for k, v in status_lst:
+                    status[k] = v
             logger.info(_status_str(status))
 
         # save model

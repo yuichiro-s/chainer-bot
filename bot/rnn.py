@@ -103,7 +103,7 @@ class Rnn(object):
                     state['c' + str(layer_num)] = c
         return state
 
-    def forward(self, state, xs, train=True):
+    def forward(self, state, xs, train=True, gpu=None):
         """Forward computation.
 
         :param state: initial state
@@ -113,7 +113,7 @@ class Rnn(object):
         :return: final state (and unnormalized probabilities)
         """
         batch_size = xs[0].data.shape[0]
-        x0 = util.id2var(self.eos_id, batch_size, train)
+        x0 = util.id2var(self.eos_id, batch_size, train, gpu=gpu)
         ys = []
         for x in [x0] + xs:
             step_out = self.step(state, x)

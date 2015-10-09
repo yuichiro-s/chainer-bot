@@ -23,13 +23,13 @@ class Seq2Seq(util.Model):
         self.decoder = decoder
         self.model = chainer.FunctionSet(encoder=encoder.model, decoder=decoder.model)
 
-    def _encode(self, xs, train=True):
+    def _encode(self, xs, train=True, gpu=None):
         batch_size = xs[0].data.shape[0]
-        init_state = self.encoder.create_init_state(batch_size, train=train)
-        code_state = self.encoder.forward(init_state, xs, train=train)
+        init_state = self.encoder.create_init_state(batch_size, train=train, gpu=gpu)
+        code_state = self.encoder.forward(init_state, xs, train=train, gpu=gpu)
         return code_state
 
-    def forward(self, xs, ts, train=True):
+    def forward(self, xs, ts, train=True, gpu=None):
         """
         Forward computation.
 
@@ -37,16 +37,16 @@ class Seq2Seq(util.Model):
         :param ts: correct output sequence
         :return: output sequence of decoder RNN (before softmax)
         """
-        code_state = self._encode(xs, train=train)   # encode
-        _, ys = self.decoder.forward(code_state, ts, train=train)    # decode
+        code_state = self._encode(xs, train=train, gpu=gpu)   # encode
+        _, ys = self.decoder.forward(code_state, ts, train=train, gpu=gpu)    # decode
         return ys
 
-    def generate(self, xs, **kwargs):
-        code_state = self._encode(xs, train=False)
+    def generate(self, xs, gpu=None, **kwargs):
+        code_state = self._encode(xs, train=False, gpu=gpu)
         ids = self.decoder.generate(code_state, **kwargs)
         return ids
 
-    def forward_batch(self, xs_data, ts_data, train=True):
+    def forward_batch(self, xs_data, ts_data, train=True, gpu=None):
         """Forward computation for one batch and calculate loss."""
         batch_size = xs_data.shape[1]
         volatile = not train
@@ -55,7 +55,7 @@ class Seq2Seq(util.Model):
         for x_data in xs_data:
             x = chainer.Variable(x_data, volatile=volatile)
             xs.append(x)
-        eos_x = util.id2var(self.decoder.eos_id, batch_size, train=train)
+        eos_x = util.id2var(self.decoder.eos_id, batch_size, train=train, gpu=gpu)
         xs.append(eos_x)  # at least one <EOS> must come at the end
 
         ts = []
@@ -63,17 +63,18 @@ class Seq2Seq(util.Model):
             t = chainer.Variable(t_data, volatile=volatile)
             ts.append(t)
 
-        ys = self.forward(xs, ts, train=train)
+        ys = self.forward(xs, ts, train=train, gpu=gpu)
         assert len(ys) == len(ts) + 1
 
-        eos_t = util.id2var(self.decoder.eos_id, batch_size, train=train)
+        eos_t = util.id2var(self.decoder.eos_id, batch_size, train=train, gpu=gpu)
         ts.append(eos_t)  # must predict EOS at the end
 
         loss = 0
         accs = []
         for y, t in zip(ys, ts):
             loss += F.softmax_cross_entropy(y, t)
-            accs.append(F.accuracy(y, t).data)
+            acc = float(F.accuracy(y, t).data)
+            accs.append(acc)
         acc_avg = sum(accs) / len(accs)
 
         return loss, acc_avg
