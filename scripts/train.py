@@ -54,7 +54,7 @@ def main(args):
 
     # load corpus
     print >> sys.stderr, 'Loading training data from {}'.format(args.data)
-    c = corpus.load_corpus(args.data)
+    c = corpus.load_corpus(args.data, max_len=args.max_len)
 
     # create batches
     print >> sys.stderr, 'Creating batches...'
@@ -85,8 +85,11 @@ if __name__ == '__main__':
     parser.add_argument('--batch', type=int, default=128, help='batch size')
     parser.add_argument('--epoch', type=int, default=10, help='number of epochs to train')
     parser.add_argument('--optim', nargs='+', default=['Adam'], help='optimization method supported by chainer (optional arguments can be omitted)')
-    parser.add_argument('--no-shuffle', action='store_true', default=False, help='don\'t shuffle training data')
     parser.add_argument('--gpu', type=int, default=None, help='GPU ID')
     parser.add_argument('--save-every', type=int, default=1, help='save model every this number of epochs')
+
+    # training data
+    parser.add_argument('--max-len', type=int, default=None, help='threshold of length to discard training samples')
+    parser.add_argument('--no-shuffle', action='store_true', default=False, help='don\'t shuffle training data')
 
     main(parser.parse_args())

@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 
-def load_corpus(path):
+def load_corpus(path, max_len=None):
     """Load pairs of ID sequences from file."""
     corpus = []
     with open(path) as f:
@@ -12,7 +12,8 @@ def load_corpus(path):
                 xs_str, ts_str = es
                 xs = map(int, xs_str.split())
                 ts = map(int, ts_str.split())
-                corpus.append((xs, ts))
+                if max_len is None or (len(xs) < max_len and len(ts) < max_len):
+                    corpus.append((xs, ts))
     return corpus
 
 
