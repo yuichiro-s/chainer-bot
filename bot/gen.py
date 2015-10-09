@@ -3,7 +3,7 @@
 from bot import util
 
 
-def generate(input_words, s2s, vocab, max_len=50, exp=3):
+def generate(input_words, s2s, vocab, **kwargs):
     # convert to IDs
     xs = []
     for w in input_words:
@@ -11,8 +11,13 @@ def generate(input_words, s2s, vocab, max_len=50, exp=3):
         x = util.id2var(w_id, train=False)
         xs.append(x)
 
+    if len(xs) == 0:
+        # Seq2seq doesn't accept empty input, in which case batch size is unknown
+        x = util.id2var(s2s.encoder.eos_id, train=False)
+        xs.append(x)
+
     # generate ID sequence
-    w_ids = s2s.generate(xs, max_len=max_len, exp=exp)
+    w_ids = s2s.generate(xs, **kwargs)
 
     # convert to words
     ws = []

@@ -18,6 +18,10 @@ def main(args):
     vocab_path = os.path.join(dir_path, 'vocab')
     voc = vocab.Vocab.load(vocab_path)
 
+    # arguments for generation method
+    kwargs = vars(args)
+    kwargs.pop('model')
+
     while True:
         try:
             # get input
@@ -27,8 +31,7 @@ def main(args):
             # currently all characters are treated as one word
             input_words = user_input
 
-            sen = gen.generate(input_words, s2s, voc,
-                               max_len=args.max_len, exp=args.exp)
+            sen = gen.generate(input_words, s2s, voc, **kwargs)
 
             print sen
 
@@ -43,6 +46,7 @@ if __name__ == '__main__':
 
     parser.add_argument('model', help='destination of model')
     parser.add_argument('--exp', type=int, default=3, help='adjust output distribution by exponentiating it by this number')
+    parser.add_argument('--min-len', type=int, default=0, help='minimum length of output seuqnece')
     parser.add_argument('--max-len', type=int, default=50, help='maximum length of output seuqnece')
 
     main(parser.parse_args())

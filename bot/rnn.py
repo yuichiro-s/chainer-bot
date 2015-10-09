@@ -127,17 +127,19 @@ class Rnn(object):
         else:
             return state, ys
 
-    def generate(self, state, max_len=50, exp=3):
+    def generate(self, state, min_len=0, max_len=50, exp=3):
         """Generate sequence.
         Batch size must be 1, because all samples in batch must have the same length .
 
         :param state: initial state
         :type state: dict of (string, chainer.Variable)
+        :param int min_len: minimum length of output
         :param int max_len: maximum length of output
         :param int exp: exponentiate output distribution by this number
         :rtype: list of int
         """
         assert not self.suppress_output
+        assert min_len <= max_len
 
         # assert that batch size is 1
         for s in state.values():
@@ -150,20 +152,25 @@ class Rnn(object):
 
             # calculate output distribution
             # cast to float64, otherwise probabilities don't sum to 1
-            y_data = y.data[0].astype(np.float64)
+            probs = y.data[0].astype(np.float64)
             # probabilities are adjusted by exponentiating them by ``exp``
-            y_data *= exp
-            # softmax
-            y_data -= np.max(y_data)
-            y_data = np.exp(y_data)
-            probs = y_data / np.sum(y_data)
+            probs *= exp
+
+            # don't terminate prematurely
+            if len(ids) < min_len:
+                probs[self.eos_id] = 0
+
+            # soft-max
+            probs -= np.max(probs)
+            probs = np.exp(probs)
+            probs = probs / np.sum(probs)
 
             # sample from distribution
             next_id = np.random.choice(probs.size, p=probs)
             ids.append(next_id)
 
             if next_id == self.eos_id:
-                # terminate generateion
+                # terminate generation
                 break
             else:
                 # create next input
