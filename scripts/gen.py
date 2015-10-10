@@ -45,7 +45,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate sentences from model interactively.')
 
     parser.add_argument('model', help='destination of model')
-    parser.add_argument('--exp', type=int, default=3, help='adjust output distribution by exponentiating it by this number')
+    parser.add_argument('--exp', type=float, default=3, help='adjust output distribution by exponentiating it by this number')
     parser.add_argument('--min-len', type=int, default=0, help='minimum length of output seuqnece')
     parser.add_argument('--max-len', type=int, default=50, help='maximum length of output seuqnece')
 
