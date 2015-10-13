@@ -27,11 +27,17 @@ def main(args):
             # get input
             user_input = raw_input('> ').decode('utf-8')
 
+            prefix = None
+            if user_input.startswith(u':'):
+                # prefix mode
+                prefix = user_input[1:]
+                user_input = u''
+
             # separate into words
             # currently all characters are treated as one word
             input_words = user_input
 
-            sen = gen.generate(input_words, s2s, voc, **kwargs)
+            sen = gen.generate(input_words, s2s, voc, prefix=prefix, **kwargs)
 
             print sen
 

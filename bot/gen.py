@@ -3,7 +3,7 @@
 from bot import util
 
 
-def generate(input_words, s2s, vocab, **kwargs):
+def generate(input_words, s2s, vocab, prefix=None, no_unk=False, exclude=None, exclude_first=None, **kwargs):
     # convert to IDs
     xs = []
     for w in input_words:
@@ -16,23 +16,17 @@ def generate(input_words, s2s, vocab, **kwargs):
         x = util.id2var(s2s.encoder.eos_id, train=False)
         xs.append(x)
 
-    new_kwargs = kwargs.copy()
-
     # set up IDs to exclude
-    exclude_ids = new_kwargs.pop('exclude')
-    if exclude_ids is None:
-        exclude_ids = []
-    no_unk = new_kwargs.pop('no_unk')
+    exclude_ids = [] if exclude is None else exclude
     if no_unk:
         exclude_ids.append(vocab.unk_id)
-    new_kwargs['exclude_ids'] = exclude_ids
-    exclude_ids_first = new_kwargs.pop('exclude_first')
-    if exclude_ids_first is None:
-        exclude_ids_first = []
-    new_kwargs['exclude_ids_first'] = exclude_ids_first
+    exclude_ids_first = [] if exclude_first is None else exclude_first
+
+    # set up prefix
+    prefix_ids = [] if prefix is None else map(vocab.get_id, prefix)
 
     # generate ID sequence
-    w_ids = s2s.generate(xs, **new_kwargs)
+    w_ids = s2s.generate(xs, prefix=prefix_ids, exclude_ids=exclude_ids, exclude_ids_first=exclude_ids_first, **kwargs)
 
     # convert to words
     ws = []
