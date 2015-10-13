@@ -127,7 +127,7 @@ class Rnn(object):
         else:
             return state, ys
 
-    def generate(self, state, min_len=0, max_len=50, exp=3):
+    def generate(self, state, min_len=0, max_len=50, exp=3, prefix=None, exclude_ids=None, exclude_ids_first=None):
         """Generate sequence.
         Batch size must be 1, because all samples in batch must have the same length .
 
@@ -136,6 +136,9 @@ class Rnn(object):
         :param int min_len: minimum length of output
         :param int max_len: maximum length of output
         :param int exp: exponentiate output distribution by this number
+        :param list prefix: IDs that must be generated as prefix
+        :param list exclude_ids: IDs not to generate
+        :param list exclude_ids_first: IDs not to generate as first ID
         :rtype: list of int
         """
         assert not self.suppress_output
@@ -150,26 +153,41 @@ class Rnn(object):
         for i in range(max_len):
             state, y = self.step(state, x)
 
-            # calculate output distribution
-            # cast to float64, otherwise probabilities don't sum to 1
-            probs = y.data[0].astype(np.float64)
-            # probabilities are adjusted by exponentiating them by ``exp``
-            probs *= exp
+            if prefix is not None and i < len(prefix):
+                # force to generate next ID in prefix
+                next_id = prefix[i]
+            else:
+                # calculate output distribution
+                # cast to float64, otherwise probabilities don't sum to 1
+                probs = y.data[0].astype(np.float64)
+                # probabilities are adjusted by exponentiating them by ``exp``
+                probs *= exp
 
-            # don't terminate prematurely
-            if len(ids) < min_len:
-                probs[self.eos_id] = 0
+                # don't terminate prematurely
+                if len(ids) < min_len:
+                    probs[self.eos_id] = 0
 
-            # soft-max
-            probs -= np.max(probs)
-            probs = np.exp(probs)
-            probs = probs / np.sum(probs)
+                # don't generate specified IDs
+                if exclude_ids is not None:
+                    assert isinstance(exclude_ids, list)
+                    for w_id in exclude_ids:
+                        probs[w_id] = 0
+                if i == 0 and exclude_ids_first is not None:
+                    for w_id in exclude_ids_first:
+                        probs[w_id] = 0
 
-            # sample from distribution
-            next_id = np.random.choice(probs.size, p=probs)
+                # soft-max
+                probs -= np.max(probs)
+                probs = np.exp(probs)
+                probs = probs / np.sum(probs)
+
+                # sample from distribution
+                next_id = np.random.choice(probs.size, p=probs)
+
             ids.append(next_id)
 
             if next_id == self.eos_id:
+
                 # terminate generation
                 break
             else:

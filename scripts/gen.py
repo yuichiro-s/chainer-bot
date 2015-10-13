@@ -48,5 +48,8 @@ if __name__ == '__main__':
     parser.add_argument('--exp', type=float, default=3, help='adjust output distribution by exponentiating it by this number')
     parser.add_argument('--min-len', type=int, default=0, help='minimum length of output seuqnece')
     parser.add_argument('--max-len', type=int, default=50, help='maximum length of output seuqnece')
+    parser.add_argument('--no-unk', action='store_true', default=False, help='don\'t generate <UNK>')
+    parser.add_argument('--exclude', type=int, nargs='+', help='IDs never to generate')
+    parser.add_argument('--exclude-first', type=int, nargs='+', help='IDs not to generate as the first word')
 
     main(parser.parse_args())

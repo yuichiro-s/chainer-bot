@@ -16,8 +16,23 @@ def generate(input_words, s2s, vocab, **kwargs):
         x = util.id2var(s2s.encoder.eos_id, train=False)
         xs.append(x)
 
+    new_kwargs = kwargs.copy()
+
+    # set up IDs to exclude
+    exclude_ids = new_kwargs.pop('exclude')
+    if exclude_ids is None:
+        exclude_ids = []
+    no_unk = new_kwargs.pop('no_unk')
+    if no_unk:
+        exclude_ids.append(vocab.unk_id)
+    new_kwargs['exclude_ids'] = exclude_ids
+    exclude_ids_first = new_kwargs.pop('exclude_first')
+    if exclude_ids_first is None:
+        exclude_ids_first = []
+    new_kwargs['exclude_ids_first'] = exclude_ids_first
+
     # generate ID sequence
-    w_ids = s2s.generate(xs, **kwargs)
+    w_ids = s2s.generate(xs, **new_kwargs)
 
     # convert to words
     ws = []
