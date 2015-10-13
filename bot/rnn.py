@@ -165,16 +165,16 @@ class Rnn(object):
 
                 # don't terminate prematurely
                 if len(ids) < min_len:
-                    probs[self.eos_id] = 0
+                    probs[self.eos_id] = -np.inf
 
                 # don't generate specified IDs
                 if exclude_ids is not None:
                     assert isinstance(exclude_ids, list)
                     for w_id in exclude_ids:
-                        probs[w_id] = 0
+                        probs[w_id] = -np.inf
                 if i == 0 and exclude_ids_first is not None:
                     for w_id in exclude_ids_first:
-                        probs[w_id] = 0
+                        probs[w_id] = -np.inf
 
                 # soft-max
                 probs -= np.max(probs)
@@ -187,7 +187,6 @@ class Rnn(object):
             ids.append(next_id)
 
             if next_id == self.eos_id:
-
                 # terminate generation
                 break
             else:
